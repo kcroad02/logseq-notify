@@ -38,7 +38,8 @@ Streamline your productivity with Logpush, a powerful integration of Logseq, Pus
 
 1. **Add TODO tasks in your markdown file:**
    ```markdown
-   - TODO Buy groceries SCHEDULED: <2023-10-05 09:00>
+   - TODO Buy groceries
+     SCHEDULED: <2023-10-05 09:00>
    - TODO Call mom
    ```
 2. **Run the script to parse tasks and generate `.txt` files:**
