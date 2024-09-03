@@ -1,0 +1,12 @@
+{
+    "paths": {
+        "default": {
+            "markdown": "/home/kcr/Sync/Logseq/pages/Logpush.md",
+            "output_dir": "/home/kcr/Sync/Logseq/assets/logpush",
+            "pushwidget_target": "/home/kcr/Sync/Logseq/assets/logpush/pushwidget",
+            "notification_tracker": "/home/kcr/Sync/Logseq/assets/logpush/notification_tracker.txt",
+            "pushWidget_target": "/home/kcr/Sync/Logseq/assets/logpush/pushWidget"
+        }
+    },
+    "api_key_path": "/home/kcr/Sync/Logseq/assets/logpush/api_key.json"
+}
