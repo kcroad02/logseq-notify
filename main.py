@@ -7,11 +7,13 @@ from socket import gethostname
 
 # Determine the script directory
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_PATH = os.path.join(SCRIPT_DIR, 'config.json')
+DEFAULT_CONFIG_PATH = os.path.join(SCRIPT_DIR, 'config.json')
+ALTERNATIVE_CONFIG_PATH = os.path.join(os.getenv('HOME'), 'Sync', 'Logseq', 'assets', 'logpush', 'config.json')
 
 def create_default_config(config_path):
     """Create a default configuration file if it doesn't exist."""
     if not os.path.exists(config_path):
+        print(f"Creating default configuration file at {config_path}.")
         default_config = {
             "paths": {
                 "default": {
@@ -26,16 +28,29 @@ def create_default_config(config_path):
         with open(config_path, 'w') as f:
             json.dump(default_config, f, indent=4)
         print(f'Default configuration file created at {config_path}. Please update it with your markdown file paths and API key path.')
+    else:
+        print(f"Configuration file already exists at {config_path}.")
 
-def load_config(config_path):
-    """Load configuration from the JSON file."""
-    if not os.path.exists(config_path):
-        return None
-    with open(config_path) as f:
-        return json.load(f)
+def load_config():
+    """Load configuration from the JSON file from both potential paths."""
+    config_path = None
+    if os.path.exists(ALTERNATIVE_CONFIG_PATH):
+        print(f"Loading configuration from alternative path: {ALTERNATIVE_CONFIG_PATH}.")
+        config_path = ALTERNATIVE_CONFIG_PATH
+    elif os.path.exists(DEFAULT_CONFIG_PATH):
+        print(f"Loading configuration from default path: {DEFAULT_CONFIG_PATH}.")
+        config_path = DEFAULT_CONFIG_PATH
+    else:
+        print("No configuration file found in either path.")
+    
+    if config_path:
+        with open(config_path) as f:
+            return json.load(f), config_path
+    return None, None
 
 def save_config(config, config_path):
     """Save configuration to the JSON file."""
+    print(f"Saving configuration to {config_path}.")
     with open(config_path, 'w') as f:
         json.dump(config, f, indent=4)
 
@@ -59,14 +74,20 @@ def prompt_for_paths(paths):
 
     if not paths['markdown']:
         paths['markdown'], paths['output_dir'] = get_user_choice()
+        print(f"Markdown file set to: {paths['markdown']}")
+        print(f"Output directory set to: {paths['output_dir']}")
 
     output_dir = paths['output_dir']
     paths['pushWidget_target'] = os.path.join(output_dir, 'pushWidget')
     paths['notification_tracker'] = os.path.join(output_dir, 'notification_tracker.txt')
 
+    print(f"PushWidget target set to: {paths['pushWidget_target']}")
+    print(f"Notification tracker set to: {paths['notification_tracker']}")
+
 def get_task_file_paths(config):
     """Return file paths based on configuration and prompt user for required inputs."""
     paths = config['paths'].get('default', {})
+    print(f"Current paths configuration: {paths}")
     prompt_for_paths(paths)
     return paths
 
@@ -78,12 +99,15 @@ def get_api_key(config):
         choice = input(f"Do you want to save the API key in the default directory ({default_api_key_path})? (Y/n): ").strip().lower()
         api_key_path = default_api_key_path if choice in ['y', ''] else input("Enter the custom path to save your API key file: ").strip()
         config["api_key_path"] = api_key_path
-        save_config(config, CONFIG_PATH)
+        save_config(config, DEFAULT_CONFIG_PATH)
+
+    print(f"API key path: {api_key_path}")
 
     if not os.path.exists(api_key_path):
         api_key = input("Enter your Pushbullet API key: ").strip()
         with open(api_key_path, 'w') as f:
             json.dump({"api_key": api_key}, f, indent=4)
+        print(f"API key saved to {api_key_path}.")
         return api_key
     with open(api_key_path) as f:
         api_key = json.load(f).get("api_key")
@@ -91,6 +115,7 @@ def get_api_key(config):
             api_key = input("Enter your Pushbullet API key: ").strip()
             with open(api_key_path, 'w') as f:
                 json.dump({"api_key": api_key}, f, indent=4)
+            print(f"API key updated in {api_key_path}.")
         return api_key
 
 def parse_task_line(line):
@@ -109,16 +134,21 @@ def parse_scheduled_line(line):
 def write_task_file(task, index, output_dir):
     """Write task information to a file."""
     file_path = os.path.join(output_dir, f"pushWidget{index}.txt")
+    print(f"Writing task to {file_path}.")
     with open(file_path, 'w') as f:
         f.write(task)
 
 def send_pushbullet_notification(api_key, title, body):
     """Send a notification using Pushbullet."""
+    print(f"Sending Pushbullet notification with title: '{title}' and body: '{body}'.")
     url = 'https://api.pushbullet.com/v2/pushes'
     headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
     data = {'type': 'note', 'title': title, 'body': body}
     response = requests.post(url, headers=headers, json=data, verify=False)
-    return response.status_code == 200
+    if response.status_code == 200:
+        print("Notification sent successfully.")
+    else:
+        print(f"Failed to send notification. Status code: {response.status_code}")
 
 def should_send_notification(tracker_file, task_time):
     """Determine if the notification should be sent based on the last notification time."""
@@ -126,9 +156,11 @@ def should_send_notification(tracker_file, task_time):
         with open(tracker_file, 'r') as f:
             last_notification_time = f.read().strip()
         if last_notification_time == task_time:
+            print(f"Notification already sent for this time: {task_time}.")
             return False
     with open(tracker_file, 'w') as f:
         f.write(task_time)
+    print(f"Notification time updated to: {task_time}.")
     return True
 
 def truncate_task_description(task_description, trunc_length):
@@ -140,40 +172,30 @@ def truncate_task_description(task_description, trunc_length):
         end -= 1
     if end == 0:  # No space found, just truncate normally
         truncated = task_description[:trunc_length - 3].strip()
+        print(f"Truncated task description (no space found): {truncated}...")
         return truncated + '...'
     truncated = task_description[:end].strip()
     while len(truncated) + 3 > trunc_length:
         truncated = truncated[:len(truncated) - 1].strip()
+    print(f"Truncated task description: {truncated}...")
     return truncated + '...'
 
 def format_date(dt):
     """Format the date without leading zeros in the month and day."""
-    return dt.strftime(f'%-m/%-d/%y')
+    formatted_date = dt.strftime(f'%-m/%-d/%y')
+    print(f"Formatted date: {formatted_date}")
+    return formatted_date
 
 def pad_task_description_with_date(description, formatted_date, total_length):
     """Pad the task description with spaces to ensure it and the date fit to the specified total length."""
     space_needed = total_length - len(description) - len(formatted_date) - 3  # account for ' ()'
     padded_description = description + ' ' * space_needed
-    return f'{padded_description} ({formatted_date})'
-
-def create_symlink():
-    """Create a symlink if user agrees."""
-    home_dir = os.getenv('HOME')
-    target = os.path.join(home_dir, 'storage', 'shared', 'Downloads', 'logpush')
-    link_name = os.path.join(home_dir, 'logpush')
-
-    if not os.path.exists(target):
-        print(f"Target directory {target} does not exist.")
-        return
-
-    if os.path.exists(link_name):
-        print(f"Symlink {link_name} already exists.")
-        return
-
-    os.symlink(target, link_name)
-    print(f"Symlink created: {link_name} -> {target}")
+    padded_task = f'{padded_description} ({formatted_date})'
+    print(f"Padded task description with date: {padded_task}")
+    return padded_task
 
 def main():
+    print("Starting script.")
     if gethostname() == 'localhost':
         is_termux_user = input("Are you using Termux on an Android device? (Y/n): ").strip().lower()
         if is_termux_user in ['y', '']:
@@ -181,20 +203,23 @@ def main():
             if create_symlink_option in ['y', '']:
                 create_symlink()
 
-    config_path = CONFIG_PATH
-    create_default_config(config_path)
-    config = load_config(config_path)
-    if not config:
-        print("Configuration file not found and default configuration created.")
-        config = load_config(config_path)
+    config, config_path = load_config()
+    if config is None:
+        print("Configuration not found. Creating default configuration.")
+        create_default_config(DEFAULT_CONFIG_PATH)
+        config, config_path = load_config()
+    
+    if config is None:
+        print("Failed to load configuration after creating default file.")
+        return
 
     if 'paths' not in config or 'default' not in config['paths']:
-        print("Configuration paths are missing. Please provide the necessary paths.")
+        print("Configuration paths are missing. Providing default values.")
         config['paths'] = {
             'default': {
                 "markdown": "",
                 "output_dir": "",
-                "pushwidget_target": "",
+                "pushWidget_target": "",
                 "notification_tracker": ""
             }
         }
@@ -202,7 +227,7 @@ def main():
 
     paths = get_task_file_paths(config)
     if not paths or not all(paths.values()):
-        print('Configuration paths are missing. Please provide the necessary paths.')
+        print('Configuration paths are missing. Prompting for paths.')
         prompt_for_paths(config['paths']['default'])
         save_config(config, config_path)
         paths = config['paths']['default']
@@ -212,14 +237,18 @@ def main():
     pushWidget_target = paths['pushWidget_target']
     notification_tracker = paths['notification_tracker']
 
-    if not markdown_file or not output_dir or not pushWidget_target or not notification_tracker:
-        print("One or more required paths are not set. Please check your configuration.")
-        return
+    print(f"Markdown file path: {markdown_file}")
+    print(f"Output directory path: {output_dir}")
+    print(f"PushWidget target path: {pushWidget_target}")
+    print(f"Notification tracker path: {notification_tracker}")
 
-    save_config(config, config_path)
+    if not markdown_file or not output_dir or not pushWidget_target or not notification_tracker:
+        print("One or more required paths are not set. Aborting.")
+        return
 
     pushbullet_api_key = get_api_key(config)
     if not pushbullet_api_key:
+        print("Failed to retrieve API key. Aborting.")
         return
 
     os.makedirs(output_dir, exist_ok=True)
@@ -249,6 +278,7 @@ def main():
                 if scheduled_date:
                     scheduled_date_time = datetime.strptime(f'{scheduled_date} {scheduled_time}', '%Y-%m-%d %H:%M') if scheduled_time else datetime.strptime(scheduled_date, '%Y-%m-%d')
                     tasks.append((task_description, scheduled_date_time))
+                    print(f"Task added with description: {task_description} and scheduled time: {scheduled_date_time}")
                     i += 1
                 else:
                     tasks.append((task_description, None))
@@ -281,6 +311,8 @@ def main():
         else:
             display_task = ' ' * total_length  # Empty task with spaces to ensure consistent length
         write_task_file(display_task, i, pushWidget_target)
+
+    print("Script finished.")
 
 if __name__ == '__main__':
     main()
