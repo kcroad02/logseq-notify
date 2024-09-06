@@ -27,11 +27,11 @@ Streamline your productivity with Logpush, a powerful integration of Logseq, Pus
      ```
    - Update `config.json` with your markdown file paths and Pushbullet API key path.
 4. **Configure Tasker:**
-   - Import the provided [XML Tasker configuration](https://github.com/kcroad02/logseq-push-tasker/releases/download/0.0.1/LogPush.Tasker.Defaults.xml).
+   - Import the provided [XML Tasker configuration](https://github.com/kcroad02/logseq-push-tasker/blob/main/LogPush%20Tasker%20Defaults.tsk.xml).
    - Set the Termux execution path and Pushbullet API key.
    - Verify that paths match your setup.
 5. **Configure KWGT:**
-   - Import the [KWGT widget preset](https://github.com/kcroad02/logseq-push-tasker/releases/download/0.0.1/Logpush.Widget.Example.kwgt) or create your own.
+   - Import the [KWGT widget preset](https://github.com/kcroad02/logseq-push-tasker/blob/main/Logpush.Widget.Example.kwgt) or create your own.
    - Ensure Tasker variables match the widget text placeholders.
 
 ## Usage
