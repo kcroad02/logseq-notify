@@ -25,6 +25,15 @@ def create_default_config(config_path):
             },
             "api_key_path": ""
         }
+        
+        # Ask if the user is using Termux
+        if gethostname() == 'localhost':
+            is_termux_user = input("Are you using Termux on an Android device? (Y/n): ").strip().lower()
+            if is_termux_user in ['y', '']:
+                create_symlink_option = input("Would you like to create a symlink in your $HOME directory for easier access? (Y/n): ").strip().lower()
+                if create_symlink_option in ['y', '']:
+                    create_symlink()
+        
         with open(config_path, 'w') as f:
             json.dump(default_config, f, indent=4)
         print(f'Default configuration file created at {config_path}. Please update it with your markdown file paths and API key path.')
@@ -196,23 +205,16 @@ def pad_task_description_with_date(description, formatted_date, total_length):
 
 def main():
     print("Starting script.")
-    if gethostname() == 'localhost':
-        is_termux_user = input("Are you using Termux on an Android device? (Y/n): ").strip().lower()
-        if is_termux_user in ['y', '']:
-            create_symlink_option = input("Would you like to create a symlink in your $HOME directory for easier access? (Y/n): ").strip().lower()
-            if create_symlink_option in ['y', '']:
-                create_symlink()
-
+    
     config, config_path = load_config()
     if config is None:
         print("Configuration not found. Creating default configuration.")
         create_default_config(DEFAULT_CONFIG_PATH)
         config, config_path = load_config()
+        if config is None:
+            print("Failed to load configuration after creating default file.")
+            return
     
-    if config is None:
-        print("Failed to load configuration after creating default file.")
-        return
-
     if 'paths' not in config or 'default' not in config['paths']:
         print("Configuration paths are missing. Providing default values.")
         config['paths'] = {
@@ -224,49 +226,49 @@ def main():
             }
         }
         save_config(config, config_path)
-
+    
     paths = get_task_file_paths(config)
     if not paths or not all(paths.values()):
         print('Configuration paths are missing. Prompting for paths.')
         prompt_for_paths(config['paths']['default'])
         save_config(config, config_path)
         paths = config['paths']['default']
-
+    
     markdown_file = paths['markdown']
     output_dir = paths['output_dir']
     pushWidget_target = paths['pushWidget_target']
     notification_tracker = paths['notification_tracker']
-
+    
     print(f"Markdown file path: {markdown_file}")
     print(f"Output directory path: {output_dir}")
     print(f"PushWidget target path: {pushWidget_target}")
     print(f"Notification tracker path: {notification_tracker}")
-
+    
     if not markdown_file or not output_dir or not pushWidget_target or not notification_tracker:
         print("One or more required paths are not set. Aborting.")
         return
-
+    
     pushbullet_api_key = get_api_key(config)
     if not pushbullet_api_key:
         print("Failed to retrieve API key. Aborting.")
         return
-
+    
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(pushWidget_target, exist_ok=True)
-
+    
     now = datetime.now()
-
+    
     if not os.path.exists(markdown_file):
         print(f"Markdown file not found at {markdown_file}.")
         return
-
+    
     with open(markdown_file) as f:
         lines = f.readlines()
-
+    
     max_tasks = 5
     total_length = 40  # Total length (you can adjust this value)
     tasks = []
-
+    
     i = 0
     while i < len(lines):
         line = lines[i].strip()
@@ -285,10 +287,10 @@ def main():
             else:
                 tasks.append((task_description, None))
         i += 1
-
+    
     # Sorting tasks by due date, tasks with no dates go to the end
     tasks.sort(key=lambda x: (x[1] is None, x[1] or datetime.max))
-
+    
     for i in range(max_tasks):
         if i < len(tasks):
             task_description, scheduled_date_time = tasks[i]
@@ -298,7 +300,7 @@ def main():
                 trunc_length_with_date = total_length - date_length  # Adjust length for description part
                 truncated_task = truncate_task_description(task_description, trunc_length_with_date)
                 display_task = pad_task_description_with_date(truncated_task, formatted_date, total_length)
-
+    
                 time_difference = scheduled_date_time - now
                 if 0 <= time_difference.total_seconds() <= 180:
                     if should_send_notification(notification_tracker, scheduled_date_time.isoformat()):
@@ -311,7 +313,7 @@ def main():
         else:
             display_task = ' ' * total_length  # Empty task with spaces to ensure consistent length
         write_task_file(display_task, i, pushWidget_target)
-
+    
     print("Script finished.")
 
 if __name__ == '__main__':
