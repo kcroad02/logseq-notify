@@ -31,7 +31,7 @@ Streamline your productivity with Logpush, a powerful integration of Logseq, Pus
    - Set the Termux execution path and Pushbullet API key.
    - Verify that paths match your setup.
 5. **Configure KWGT:**
-   - Import the [KWGT widget preset](https://github.com/kcroad02/logseq-push-tasker/blob/main/Logpush.Widget.Example.kwgt) or create your own.
+   - Import the [KWGT widget preset](https://github.com/kcroad02/logseq-push-tasker/blob/main/LogpushWidgetExample.kwgt) or create your own.
    - Ensure Tasker variables match the widget text placeholders.
 
 ## Usage
