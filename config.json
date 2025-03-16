@@ -1,0 +1,11 @@
+{
+    "paths": {
+        "default": {
+            "markdown": "",
+            "output_dir": "",
+            "pushWidget_target": "",
+            "notification_tracker": ""
+        }
+    },
+    "api_key_path": ""
+}
