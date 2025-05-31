@@ -11,7 +11,7 @@ DEFAULT_CONFIG_PATH = os.path.join(SCRIPT_DIR, 'config.json')
 
 home_dir_alt = os.getenv('HOME')
 if home_dir_alt:
-    ALTERNATIVE_CONFIG_PATH = os.path.join(home_dir_alt, 'Sync', 'Logseq', 'assets', 'logpush', 'config.json')
+    ALTERNATIVE_CONFIG_PATH = os.path.join(home_dir_alt, 'storage', 'emulated', '0', 'Logseq', 'assets', 'logseq-notify-android', 'config.json')
 else:
     # Fallback if HOME is not set
     ALTERNATIVE_CONFIG_PATH = os.path.join(SCRIPT_DIR, 'alternative_config.json')
