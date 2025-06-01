@@ -3,7 +3,8 @@
         "default": {
             "markdown": "",
             "output_dir": "",
-            "notification_tracker": ""
+            "notification_tracker": "",
+            "ntfy_topic": ""
         }
     }
 }

@@ -13,7 +13,7 @@ DEFAULT_CONFIG_PATH = os.path.join(SCRIPT_DIR, 'config_markdown.json')
 home_dir_alt = os.getenv('HOME')
 if home_dir_alt:
     # Alternative config path for Markdown version
-    ALTERNATIVE_CONFIG_PATH = os.path.join(home_dir_alt, 'storage', 'shared', 'logseq', 'graphs', 'Omni', 'assets', 'logseq-notify-data', 'config_markdown.json') # Using lowercase 'logseq' for consistency in paths
+    ALTERNATIVE_CONFIG_PATH = os.path.join(home_dir_alt, 'storage', 'shared', 'logseq', 'assets', 'logseq-task-notifier', 'config_markdown.json') # Using lowercase 'logseq' for consistency in paths
 else:
     ALTERNATIVE_CONFIG_PATH = os.path.join(SCRIPT_DIR, 'alternative_config_markdown.json')
 
@@ -35,14 +35,14 @@ def create_default_config(config_path):
         if gethostname() == 'localhost' or "com.termux" in os.getenv("PREFIX", ""):
             print("Detected Termux environment. Suggesting default paths for Termux (Markdown version).")
             if home_dir_alt:
-                default_config["paths"]["default"]["markdown"] = os.path.join(home_dir_alt, 'storage', 'shared', 'logseq', 'graphs', 'Omni', 'pages', 'Tasks.md')
-                default_config["paths"]["default"]["output_dir"] = os.path.join(home_dir_alt, 'storage', 'shared', 'logseq', 'graphs', 'Omni', 'assets', 'logseq-notify-data')
+                default_config["paths"]["default"]["markdown"] = os.path.join(home_dir_alt, 'storage', 'shared', 'logseq', 'graphs', 'myGraph', 'pages', 'Tasks.md')
+                default_config["paths"]["default"]["output_dir"] = os.path.join(home_dir_alt, 'storage', 'shared', 'logseq', 'assets', 'logseq-markdown-task-notifier-data')
         
         try:
             os.makedirs(os.path.dirname(config_path), exist_ok=True)
             with open(config_path, 'w', encoding='utf-8') as f:
                 json.dump(default_config, f, indent=4)
-            print(f'Default Markdown version configuration file created at {config_path}. Please review and update it if "Omni" is not your graph name or paths differ.')
+            print(f'Default Markdown version configuration file created at {config_path}. Please review and update it if "myGraph" is not your graph name or paths differ.')
         except IOError as e:
             print(f"Error creating default Markdown version configuration file {config_path}: {e}")
     else:
@@ -100,8 +100,9 @@ def prompt_for_paths(paths_config_section):
     default_markdown_path = ""
     default_output_dir = ""
     if home_dir:
-        default_markdown_path = os.path.join(home_dir, 'storage', 'shared', 'logseq', 'graphs', 'Omni', 'pages', 'Tasks.md')
-        default_output_dir = os.path.join(home_dir, 'storage', 'shared', 'logseq', 'graphs', 'Omni', 'assets', 'logseq-notify-data')
+        # MODIFIED default path to include graphs/myGraph
+        default_markdown_path = os.path.join(home_dir, 'storage', 'shared', 'logseq', 'graphs', 'myGraph', 'pages', 'Tasks.md')
+        default_output_dir = os.path.join(home_dir, 'storage', 'shared', 'logseq', 'assets', 'logseq-markdown-task-notifier-data')
 
     if not paths_config_section.get('markdown'):
         prompt_message = "Enter Logseq Markdown file path"
