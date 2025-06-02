@@ -1,3 +1,7 @@
+----
+# !!! This script is not Logseq DB compatible yet !!!
+----
+
 # Logseq Notify via ntfy.sh
 
 This Python script looks through a Logseq Markdown file named `Tasks.md` for tasks with `SCHEDULED:` timestamps. It sends push notifications via a self-hosted or public `ntfy.sh` server for tasks that are due to start within the next 5 minutes.
