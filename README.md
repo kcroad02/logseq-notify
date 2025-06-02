@@ -1,98 +1,98 @@
 ----
-# !!! This script is not Logseq DB compatible yet !!!
+# !!! This script doesn't work with Logseq's database version yet !!!
 ----
 
-# Logseq Notify via ntfy.sh
+# Get Logseq Reminders on Your Phone/PC with ntfy.sh
 
-This Python script looks through a Logseq Markdown file named `Tasks.md` for tasks with `SCHEDULED:` timestamps. It sends push notifications via a self-hosted or public `ntfy.sh` server for tasks that are due to start within the next 5 minutes.
+This Python script helps you remember tasks from your Logseq notes. It looks at your `Tasks.md` file for tasks that have a "SCHEDULED" date and time. If a task is going to start in the next 5 minutes, it sends you a push notification using a service called `ntfy.sh`.
 
-The script is designed to be run periodically (e.g., every 5 minutes) by a scheduler like `cron` (on Linux/macOS/PC) or Tasker (on Android via Termux).
+You should set up this script to run regularly, for example, every 5 minutes. You can use tools like `cron` on computers (Linux/macOS/Windows) or **Tasker on Android (using Termux)**.
 
-## Features
+## What it Does
 
-* **Markdown Task Parsing:** Reads tasks from a Logseq-specific Markdown file.
-* **Scheduled Time Detection:** Recognizes `SCHEDULED: <YYYY-MM-DD HH:MM>` entries associated with tasks.
-* **Timely Notifications:** Sends alerts for tasks scheduled to occur between the current time and 5 minutes into the future.
-* **ntfy.sh Integration:** Leverages `ntfy.sh` for customizable push notifications.
-* **Duplicate Prevention:** Keeps track of sent notifications to avoid redundant alerts for the same task instance.
-* **Cross-Platform Compatibility:**
-    * Works on standard PC environments (Linux, macOS, Windows with Python).
-    * Supports Android via Termux, including wakelock handling to ensure script execution.
-* **Flexible Path Configuration:** Allows user-specific configuration paths on PC and script-local paths for portability/Termux.
+* **Reads Your Tasks:** It goes through your `Tasks.md` file.
+* **Finds Scheduled Times:** It spots lines that say `SCHEDULED: <YYYY-MM-DD HH:MM>` under your tasks.
+* **Sends Timely Alerts:** If a task is set to start within 5 minutes, you'll get a notification.
+* **Uses ntfy.sh:** It sends these notifications through `ntfy.sh`, which lets you get alerts on your phone or other devices.
+* **No Repeat Alerts:** It remembers which tasks it's already told you about, so you don't get the same reminder over and over again.
+* **Works Everywhere:**
+    * It can run on computers with operating systems such as Linux, macOS, Windows if you have Python.
+    * It also works on Android phones using an app called Termux. It even handles keeping your phone "awake" so it can run properly.
+* **Easy Setup for File Locations:** You can tell the script where your files are. On a PC, it usually has a special spot it checks first. On Android/Termux, or if the special spot isn't used, it looks in the same folder as the script.
 
 ## How it Works
 
-1.  **Load Configuration:** The script first tries to load `config_markdown.json`.
-    * On a PC, it looks in `~/logseq/graphs/Omni/assets/config_markdown.json`.
-    * If not found (or on Termux), it looks for `config_markdown.json` in the same directory as the script.
-    * If no configuration is found, it creates a default one and may prompt for initial setup of paths (Markdown file, output directory, ntfy topic).
-2.  **Parse Markdown File:** It reads the specified Markdown file line by line.
-    * It identifies tasks typically marked with `TODO` (or `- TODO`).
-    * It then looks for `SCHEDULED: <YYYY-MM-DD HH:MM>` lines associated with these tasks.
-3.  **Check Schedule:** For each found scheduled task, it compares the scheduled datetime with the current time.
-4.  **Send Notification:** If a task's scheduled time is between 0 and 300 seconds (inclusive) from the current time, and a notification hasn't been sent for it already:
-    * It constructs a message.
-    * It sends a POST request to the configured `ntfy.sh` topic using `curl`.
-    * It records the task's unique ID in a tracker file (`notification_tracker_markdown.txt`) to prevent re-notification.
-5.  **Termux Wakelock:** If running in Termux, it attempts to acquire a wakelock at the start and release it at the end to prevent the system from sleeping during execution.
+1.  **Finds Your Settings:** The script first tries to find a file called `config_markdown.json`.
+    * **On a PC:** It first checks in a folder like `~/logseq/graphs/Omni/assets/config_markdown.json`.
+    * **On Android (Termux) or if not found on PC:** It then looks for `config_markdown.json` in the same folder where the script itself is.
+    * If it can't find any settings, it will create a new `config_markdown.json` file for you. It might also ask you where your Markdown task file is, where it should save its own data, and what your `ntfy.sh` topic name is.
+2.  **Reads Your Markdown File:** It opens your `Tasks.md` file and reads it line by line.
+    * It finds your tasks, which usually start with `TODO` or `- TODO`.
+    * Then, it looks for the `SCHEDULED:` line right below your task.
+3.  **Checks the Time:** For each task with a schedule, it compares that time to the current time.
+4.  **Sends an Alert:** If a task is due within the next 5 minutes (but not past due), and you haven't been notified yet:
+    * It creates a short message.
+    * It sends this message to your `ntfy.sh` topic using a tool called `curl`.
+    * It saves a note in a file called `notification_tracker_markdown.txt` so it doesn't send the same alert again.
+5.  **Keeps Android Awake (Termux):** If you're running this on Termux on Android, the script will try to keep your phone from going to sleep while it's working. It lets go of this "wakelock" when it's done.
 
-## Prerequisites
+## What You Need
 
-* **Python 3:** Ensure Python 3 is installed on your system.
-* **`curl`:** The `curl` command-line utility must be installed and accessible in your system's PATH.
-    * On Linux: `sudo apt install curl` or similar for your distribution.
-    * On Termux: `pkg install curl`
-    * On macOS: Usually pre-installed. If not, `brew install curl`.
-    * On Windows: Can be installed via Chocolatey (`choco install curl`) or downloaded manually.
-* **ntfy.sh Topic:** You need an ntfy.sh topic. You can use the public `https://ntfy.sh/your_topic` or your own self-hosted ntfy server.
-* **Logseq (or other Markdown editor):** A way to create and manage your Markdown task file in the expected format.
+* **Python 3:** Make sure Python 3 is installed.
+* **`curl`:** You need the `curl` program installed.
+    * On Linux: Use `sudo apt install curl` or similar.
+    * On Termux: Use `pkg install curl`.
+    * On macOS: It's usually already there.
+    * On Windows: You can install it with Chocolatey (`choco install curl`) or download it.
+* **ntfy.sh Topic:** You need your own `ntfy.sh` topic. This is like your personal channel for notifications. You can use the public `https://ntfy.sh/your_topic` or set up your own ntfy server.
+* **Logseq (or similar):** You need a way to write and save your tasks in a Markdown file, following the Logseq format.
+* **Tasker (for Android Automation):** To make this script run automatically on your Android phone with Termux, you will need the Tasker app.
 
-## Setup
+## Setup Steps
 
-1.  **Download the Script:**
-    Save the script as `main.py` in a directory of your choice (home directory recommended for Termux).
+1.  **Get the Script:** Save the script file as `main.py` in a folder. For Termux, putting it in your home directory (`~`) is a good idea.
 
-2.  **Make it Executable (Optional, for Linux/macOS/Termux):**
+2.  **Make it Run (Optional, for Linux/macOS/Termux):**
+    Open your terminal or Termux app and type:
     ```bash
     chmod +x main.py
     ```
 
-3.  **Initial Configuration:**
-    Run the script for the first time:
+3.  **First-Time Setup:**
+    Run the script once to set it up:
     ```bash
     python3 main.py
     ```
-    * If a configuration file is not found, the script will create a default one (`config_markdown.json`).
-        * On PC: `~/.config/logseq_notifier_md/config_markdown.json`
-        * On Termux (or if the PC user path fails): in the same directory as `main.py`.
-    * It will then prompt you to enter:
-        * The full path to your Logseq Markdown tasks file.
-        * The full path to an output directory where the script can store its data (like the notification tracker).
+    * If no settings file (`config_markdown.json`) is found, the script will create one for you.
+        * On PC: It might create it in `~/logseq/graphs/Omni/assets/config_markdown.json`.
+        * On Termux (or if the PC path isn't used): It will create it in the same folder as `main.py`.
+    * The script will ask you to type in:
+        * The full path to your Logseq `Tasks.md` file.
+        * A folder where the script can save its internal files (like the notification tracker).
         * Your `ntfy.sh` topic name.
-    * Review the created `config_markdown.json` and adjust paths if necessary. The script will suggest defaults based on your environment (PC or Termux).
+    * Take a look at the `config_markdown.json` file it created and make sure the paths are correct. The script tries to guess the right paths for your computer or Termux.
 
-    **Example `config_markdown.json` structure:**
+    **What `config_markdown.json` looks like:**
     ```json
     {
         "paths": {
             "default": {
                 "markdown": "/path/to/your/logseq/graphs/YourGraph/pages/Tasks.md",
-                "output_dir": "/path/to/your/logseq/graphs/YourGraph/assets", // Or any other writable directory
-                "notification_tracker": "/path/to/your/logseq/graphs/YourGraph/assets/notification_tracker_markdown.txt", // Automatically derived from output_dir
+                "output_dir": "/path/to/your/logseq/graphs/YourGraph/assets", // Or any other folder you can write to
+                "notification_tracker": "/path/to/your/logseq/graphs/YourGraph/assets/notification_tracker_markdown.txt",
                 "ntfy_topic": "your_secret_ntfy_topic"
             }
         }
     }
     ```
-    *Note: The `notification_tracker` path is usually derived automatically if `output_dir` is set.*
+    *Note: The `notification_tracker` path is usually filled in automatically if you set the `output_dir`.*
 
-## Usage
+## How to Write Your Tasks
 
-### The script looks for tasks formatted like this:
+The script looks for tasks that look like this in your Markdown file:
 
 ```markdown
 - TODO Task description
   SCHEDULED: <YYYY-MM-DD HH:MM>
 ```
-
-The second line must be shift+entered.
+Important: The "SCHEDULED:" line must be indented (use Shift + Enter after the task description in Logseq).
