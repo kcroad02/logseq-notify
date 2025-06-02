@@ -16,7 +16,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 IS_TERMUX = "com.termux" in os.getenv("PREFIX", "")
 
 # Path for user-specific configuration (preferred on PC)
-USER_CONFIG_DIR_PC = os.path.join(os.path.expanduser("~"), ".config", APP_NAME)
+USER_CONFIG_DIR_PC = os.path.join(os.path.expanduser("~"), 'logseq', 'graphs', 'Omni', 'assets'
 USER_CONFIG_PATH_PC = os.path.join(USER_CONFIG_DIR_PC, CONFIG_FILE_NAME)
 
 # Path for configuration local to the script (fallback or for Termux/portable use)
