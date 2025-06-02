@@ -1,93 +1,115 @@
-#!/data/data/com.termux/files/usr/bin/python
+#!/usr/bin/env python3
 
 import os
 import re
 import json
 import subprocess
 from datetime import datetime
-from socket import gethostname
+# from socket import gethostname # Not strictly needed anymore for path logic
 
-# Determine the script directory
+# --- Constants ---
+APP_NAME = "logseq_notifier_md"
+CONFIG_FILE_NAME = "config_markdown.json"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-# Configuration file specifically for the Markdown version
-DEFAULT_CONFIG_PATH = os.path.join(SCRIPT_DIR, 'config_markdown.json') 
 
-home_dir_alt = os.getenv('HOME')
-if home_dir_alt:
-    # Alternative config path for Markdown version
-    ALTERNATIVE_CONFIG_PATH = os.path.join(SCRIPT_DIR, 'config_markdown.json')
-else:
-    ALTERNATIVE_CONFIG_PATH = os.path.join(SCRIPT_DIR, 'alternative_config_markdown.json')
+# Determine if running in Termux
+IS_TERMUX = "com.termux" in os.getenv("PREFIX", "")
 
-def create_default_config(config_path):
-    """Create a default configuration file for the Markdown version if it doesn't exist."""
+# Path for user-specific configuration (preferred on PC)
+USER_CONFIG_DIR_PC = os.path.join(os.path.expanduser("~"), ".config", APP_NAME)
+USER_CONFIG_PATH_PC = os.path.join(USER_CONFIG_DIR_PC, CONFIG_FILE_NAME)
+
+# Path for configuration local to the script (fallback or for Termux/portable use)
+LOCAL_CONFIG_PATH = os.path.join(SCRIPT_DIR, CONFIG_FILE_NAME)
+# --- End Constants ---
+
+def create_default_config(config_path, is_termux_env):
+    """Create a default configuration file if it doesn't exist."""
     if not os.path.exists(config_path):
         print(f"Creating default Markdown version configuration file at {config_path}.")
         default_config = {
             "paths": {
                 "default": {
-                    "markdown": "", # Path to your Logseq Markdown file with tasks
-                    "output_dir": "",  # Directory to store tracker files
-                    "notification_tracker": "", # Path to the notification tracker file
-                    "ntfy_topic": "" # Your ntfy.sh topic
+                    "markdown": "",
+                    "output_dir": "",
+                    "notification_tracker": "",
+                    "ntfy_topic": ""
                 }
             }
         }
         
-        if gethostname() == 'localhost' or "com.termux" in os.getenv("PREFIX", ""):
-            print("Detected Termux environment. Suggesting default paths for Termux (Markdown version).")
-            if home_dir_alt:
-                default_config["paths"]["default"]["markdown"] = os.path.join(home_dir_alt, 'storage', 'shared', 'logseq', 'graphs', 'Omni', 'pages', 'Tasks.md')
-                default_config["paths"]["default"]["output_dir"] = os.path.join(home_dir_alt, 'storage', 'shared', 'logseq', 'graphs', 'Omni', 'assets', 'logseq-notify-data')
+        home_dir = os.path.expanduser("~") # Use expanduser for broader compatibility
+
+        if is_termux_env:
+            print("Detected Termux environment. Suggesting default paths for Termux.")
+            if home_dir: # HOME is usually set in Termux
+                default_config["paths"]["default"]["markdown"] = os.path.join(home_dir, 'storage', 'shared', 'logseq', 'graphs', 'Omni', 'pages', 'Tasks.md')
+                # Points directly to asserts assets
+                default_config["paths"]["default"]["output_dir"] = os.path.join(home_dir, 'storage', 'shared', 'logseq', 'graphs', 'Omni', 'assets')
+        else: # PC environment
+            print("Detected PC environment. Suggesting default paths for PC.")
+            default_config["paths"]["default"]["output_dir"] = os.path.join(home_dir, 'logseq', 'graphs', 'Omni', 'assets')
         
         try:
             os.makedirs(os.path.dirname(config_path), exist_ok=True)
             with open(config_path, 'w', encoding='utf-8') as f:
                 json.dump(default_config, f, indent=4)
-            print(f'Default Markdown version configuration file created at {config_path}. Please review and update it if "Omni" is not your graph name or paths differ.')
+            print(f'Default configuration file created at {config_path}. Please review and update it, especially the "markdown" path if it is empty or "Omni"/"YourGraphName" is not your graph name or paths differ.')
         except IOError as e:
-            print(f"Error creating default Markdown version configuration file {config_path}: {e}")
+            print(f"Error creating default configuration file {config_path}: {e}")
     else:
-        print(f"Markdown version configuration file already exists at {config_path}.")
+        print(f"Configuration file already exists at {config_path}.")
 
 def load_config():
-    """Load configuration for the Markdown version from the JSON file."""
-    config_path_to_try = None
-    if os.path.exists(ALTERNATIVE_CONFIG_PATH):
-        print(f"Loading Markdown config from alternative path: {ALTERNATIVE_CONFIG_PATH}.")
-        config_path_to_try = ALTERNATIVE_CONFIG_PATH
-    elif os.path.exists(DEFAULT_CONFIG_PATH):
-        print(f"Loading Markdown config from default path: {DEFAULT_CONFIG_PATH}.")
-        config_path_to_try = DEFAULT_CONFIG_PATH
+    """Load configuration from the JSON file, preferring PC user path then local path."""
+    config_to_load = None
+    loaded_path = None
+
+    if not IS_TERMUX and os.path.exists(USER_CONFIG_PATH_PC):
+        print(f"Loading Markdown config from user path: {USER_CONFIG_PATH_PC}.")
+        config_to_load = USER_CONFIG_PATH_PC
+    elif os.path.exists(LOCAL_CONFIG_PATH):
+        print(f"Loading Markdown config from local script path: {LOCAL_CONFIG_PATH}.")
+        config_to_load = LOCAL_CONFIG_PATH
     else:
-        print(f"No Markdown configuration file found at expected locations.")
-        print(f"Attempting to create a default Markdown config at: {DEFAULT_CONFIG_PATH}")
-        default_dir = os.path.dirname(DEFAULT_CONFIG_PATH)
-        if not os.path.exists(default_dir) and default_dir != "":
-            try:
-                os.makedirs(default_dir, exist_ok=True)
-            except OSError as e:
-                print(f"Error creating directory {default_dir}: {e}")
+        print(f"No Markdown configuration file found at user path ('{USER_CONFIG_PATH_PC}') or local script path ('{LOCAL_CONFIG_PATH}').")
+        
+        path_to_create_at = LOCAL_CONFIG_PATH 
+        if not IS_TERMUX:
+            path_to_create_at = USER_CONFIG_PATH_PC
+        
+        print(f"Attempting to create a default Markdown config at: {path_to_create_at}")
+        create_default_config(path_to_create_at, IS_TERMUX)
+
+        if os.path.exists(path_to_create_at):
+            print(f"Loading newly created Markdown configuration from: {path_to_create_at}.")
+            config_to_load = path_to_create_at
+        elif not IS_TERMUX and path_to_create_at == USER_CONFIG_PATH_PC and not os.path.exists(LOCAL_CONFIG_PATH):
+            print(f"Failed to create at user path, attempting to create at local script path: {LOCAL_CONFIG_PATH}")
+            create_default_config(LOCAL_CONFIG_PATH, IS_TERMUX) 
+            if os.path.exists(LOCAL_CONFIG_PATH):
+                print(f"Loading newly created Markdown configuration from local script path: {LOCAL_CONFIG_PATH}.")
+                config_to_load = LOCAL_CONFIG_PATH
+            else:
+                print("Failed to create any Markdown configuration file.")
                 return None, None
-        create_default_config(DEFAULT_CONFIG_PATH)
-        if os.path.exists(DEFAULT_CONFIG_PATH):
-             print(f"Loading newly created Markdown configuration from default path: {DEFAULT_CONFIG_PATH}.")
-             config_path_to_try = DEFAULT_CONFIG_PATH
         else:
-            print("Failed to create or find a Markdown configuration file.")
+            print("Failed to create or find a Markdown configuration file after creation attempts.")
             return None, None
-    
-    if config_path_to_try:
+            
+    if config_to_load:
         try:
-            with open(config_path_to_try, 'r', encoding='utf-8') as f:
-                return json.load(f), config_path_to_try
+            with open(config_to_load, 'r', encoding='utf-8') as f:
+                loaded_path = config_to_load
+                return json.load(f), loaded_path
         except Exception as e:
-            print(f"Error loading/parsing Markdown config {config_path_to_try}: {e}")
+            print(f"Error loading/parsing Markdown config {config_to_load}: {e}")
             return None, None
+            
     return None, None
 
 def save_config(config, config_path):
-    """Save Markdown version configuration to the JSON file."""
+    """Save configuration to the JSON file."""
     print(f"Saving Markdown version configuration to {config_path}.")
     try:
         os.makedirs(os.path.dirname(config_path), exist_ok=True)
@@ -96,14 +118,21 @@ def save_config(config, config_path):
     except IOError as e:
         print(f"Error saving Markdown version configuration to {config_path}: {e}")
 
-def prompt_for_paths(paths_config_section):
+def prompt_for_paths(paths_config_section, is_termux_env):
     """Prompt the user to input file paths and ntfy topic for Markdown version."""
-    home_dir = os.getenv('HOME')
+    home_dir = os.path.expanduser("~")
     default_markdown_path = ""
     default_output_dir = ""
-    if home_dir:
-        default_markdown_path = os.path.join(home_dir, 'storage', 'shared', 'logseq', 'graphs', 'Omni', 'pages', 'Tasks.md')
-        default_output_dir = os.path.join(home_dir, 'storage', 'shared', 'logseq', 'graphs', 'Omni', 'assets', 'logseq-notify-data')
+
+    if is_termux_env:
+        if os.getenv('HOME'): 
+             default_markdown_path = os.path.join(os.getenv('HOME'), 'storage', 'shared', 'logseq', 'graphs', 'Omni', 'pages', 'Tasks.md')
+             # Directly points to assets now
+             default_output_dir = os.path.join(os.getenv('HOME'), 'storage', 'shared', 'logseq', 'graphs', 'Omni', 'assets')
+    else: # PC environment
+        default_markdown_path = os.path.join(home_dir, 'logseq', 'graphs', 'Omni', 'pages', 'Tasks.md')
+        default_output_dir = os.path.join(home_dir, 'logseq', 'graphs', 'Omni', 'assets')
+
 
     if not paths_config_section.get('markdown'):
         prompt_message = "Enter Logseq Markdown file path"
@@ -130,15 +159,15 @@ def prompt_for_paths(paths_config_section):
 
     output_dir = paths_config_section.get('output_dir')
     if output_dir and not paths_config_section.get('notification_tracker'):
-        paths_config_section['notification_tracker'] = os.path.join(output_dir, 'notification_tracker_markdown.txt') # Specific tracker name
+        paths_config_section['notification_tracker'] = os.path.join(output_dir, 'notification_tracker_markdown.txt')
         print(f"Notification tracker path set to: {paths_config_section['notification_tracker']}")
     elif not output_dir:
         print("Warning: Output directory is not set. Cannot automatically configure notification_tracker path.")
 
-def get_task_file_paths(config):
-    """Return file paths based on configuration and prompt user for required inputs for Markdown version."""
+def get_task_file_paths(config, is_termux_env):
+    """Return file paths based on configuration and prompt user for required inputs."""
     if 'paths' not in config or 'default' not in config['paths']:
-        print("Markdown Configuration 'paths' or 'paths.default' section is missing. Initializing.")
+        print("Configuration 'paths' or 'paths.default' section is missing. Initializing.")
         config['paths'] = config.get('paths', {})
         config['paths']['default'] = {
             "markdown": "", "output_dir": "", "notification_tracker": "", "ntfy_topic": ""
@@ -146,15 +175,24 @@ def get_task_file_paths(config):
     
     paths_section = config['paths']['default']
     
-    if not paths_section.get('markdown') or \
-       not paths_section.get('output_dir') or \
-       not paths_section.get('ntfy_topic'):
-        print("One or more essential Markdown configurations are missing.")
-        prompt_for_paths(paths_section)
+    essential_paths_missing = False
+    if not paths_section.get('markdown'):
+        print("Markdown file path is missing.")
+        essential_paths_missing = True
+    if not paths_section.get('output_dir'):
+        print("Output directory path is missing.")
+        essential_paths_missing = True
+    if not paths_section.get('ntfy_topic'):
+        print("Ntfy topic is missing.")
+        essential_paths_missing = True
+        
+    if essential_paths_missing:
+        print("One or more essential configurations are missing. Prompting for input.")
+        prompt_for_paths(paths_section, is_termux_env) 
 
     if paths_section.get('output_dir') and not paths_section.get('notification_tracker'):
         paths_section['notification_tracker'] = os.path.join(paths_section['output_dir'], 'notification_tracker_markdown.txt')
-        print(f"Derived Markdown Notification tracker path: {paths_section['notification_tracker']}")
+        print(f"Derived Notification tracker path: {paths_section['notification_tracker']}")
 
     return paths_section
 
@@ -198,7 +236,7 @@ def send_ntfy_notification(topic, title, body, priority="default", tags=None):
         stderr_decoded = result.stderr.decode('utf-8', errors='replace')
         if result.returncode == 0: print(f"Notification sent successfully. Response: {stdout_decoded}")
         else: print(f"Failed to send notification. Code: {result.returncode}\nStderr: {stderr_decoded}\nStdout: {stdout_decoded}")
-    except FileNotFoundError: print("Error: curl not found. Install with: pkg install curl")
+    except FileNotFoundError: print("Error: curl not found. Please install curl and ensure it's in your PATH (e.g., on Linux: sudo apt install curl; on Termux: pkg install curl).")
     except Exception as e: print(f"Error sending ntfy notification: {e}")
 
 def should_send_notification(tracker_file, task_unique_id):
@@ -238,8 +276,7 @@ def truncate_task_description(task_description, trunc_length):
     return truncated[:last_space] + "..." if last_space != -1 else truncated + "..."
 
 def main():
-    is_termux = "com.termux" in os.getenv("PREFIX", "")
-    if is_termux:
+    if IS_TERMUX: 
         try:
             print("Attempting to acquire Termux wakelock...")
             subprocess.run(['termux-wake-lock'], check=True, timeout=5)
@@ -251,20 +288,21 @@ def main():
     try:
         print(f"--- Logseq Markdown ntfy.sh Task Reminder ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')}) ---")
         
-        config, config_path = load_config()
+        config, config_path = load_config() 
         if config is None or config_path is None: 
             print("Critical error: Failed to load or create Markdown configuration. Aborting.")
             return 1
 
-        paths_config = get_task_file_paths(config)
+        paths_config = get_task_file_paths(config, IS_TERMUX) 
+        
         if not paths_config.get('markdown') or \
            not paths_config.get('output_dir') or \
            not paths_config.get('ntfy_topic') or \
            not paths_config.get('notification_tracker'):
-            print("Essential Markdown configuration is missing after setup attempt. Aborting.")
-            save_config(config, config_path) # Save any partial progress from prompting
+            print("Essential Markdown configuration is missing after setup attempt (markdown, output_dir, ntfy_topic, or notification_tracker). Aborting.")
+            save_config(config, config_path) 
             return 1
-        save_config(config, config_path) # Save if prompts occurred
+        save_config(config, config_path) 
 
         markdown_file = paths_config.get('markdown')
         output_dir = paths_config.get('output_dir')
@@ -277,11 +315,11 @@ def main():
         print(f"Using ntfy.sh topic: {ntfy_topic}")
         
         if not all([markdown_file, output_dir, notification_tracker_file, ntfy_topic]):
-            print("Critical path configuration or ntfy_topic is missing. Aborting.")
+            print("Critical path configuration or ntfy_topic is missing or empty. Aborting.")
             return 1
             
         try:
-            if not os.path.exists(output_dir) and output_dir != "": # Ensure output directory exists
+            if not os.path.exists(output_dir) and output_dir != "":
                 os.makedirs(output_dir, exist_ok=True)
                 print(f"Created output directory: {output_dir}")
         except OSError as e:
@@ -292,6 +330,7 @@ def main():
         
         if not os.path.exists(markdown_file):
             print(f"Markdown file not found at {markdown_file}. Aborting.")
+            print(f"Please ensure the 'markdown' path in your configuration file ('{config_path}') is correct.")
             return 1
         
         try:
@@ -327,8 +366,9 @@ def main():
                         })
                     except ValueError as e:
                         print(f"Warning: Could not parse date/time for task '{current_task_desc}' (line ~{i+1}): {e}. Line: '{line_content_stripped}'")
-            elif not line_content_stripped.startswith((" ", "\t", "-", "SCHEDULED:")) and not task_match:
+            elif not line_content_stripped.startswith((" ", "\t", "-", "SCHEDULED:")) and not task_match and "SCHEDULED:" not in line_content_stripped.upper():
                 current_task_desc = None
+
 
         print(f"Found {len(notifications_to_send)} potential scheduled events from Markdown.")
 
@@ -340,7 +380,6 @@ def main():
             if scheduled_date_time_obj:
                 time_difference_seconds = (scheduled_date_time_obj - now).total_seconds()
                 
-                # Changed it to 5 minutes.
                 if 0 <= time_difference_seconds <= 300: 
                     print(f"Markdown Task '{original_task_desc[:50]}...' scheduled for {scheduled_date_time_obj.strftime('%Y-%m-%d %H:%M')} is due soon.")
                     if should_send_notification(notification_tracker_file, task_id):
@@ -361,10 +400,10 @@ def main():
         traceback.print_exc()
         actual_exit_code = 1
     finally:
-        if is_termux:
+        if IS_TERMUX: 
             try:
                 print("Attempting to release Termux wakelock...")
-                subprocess.run(['termux-wake-unlock'], check=False, timeout=5)
+                subprocess.run(['termux-wake-unlock'], check=False, timeout=5) 
                 print("Termux wakelock release attempted.")
             except Exception as e:
                 print(f"Wakelock release attempt failed: {e}")
