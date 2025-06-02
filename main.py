@@ -15,7 +15,7 @@ DEFAULT_CONFIG_PATH = os.path.join(SCRIPT_DIR, 'config_markdown.json')
 home_dir_alt = os.getenv('HOME')
 if home_dir_alt:
     # Alternative config path for Markdown version
-    ALTERNATIVE_CONFIG_PATH = os.path.join(home_dir_alt, 'storage', 'shared', 'logseq', 'graphs', 'Omni', 'assets', 'logseq-notify-data', 'config_markdown.json') # Using lowercase 'logseq' for consistency in paths
+    ALTERNATIVE_CONFIG_PATH = os.path.join(SCRIPT_DIR, 'config_markdown.json')
 else:
     ALTERNATIVE_CONFIG_PATH = os.path.join(SCRIPT_DIR, 'alternative_config_markdown.json')
 
@@ -340,13 +340,14 @@ def main():
             if scheduled_date_time_obj:
                 time_difference_seconds = (scheduled_date_time_obj - now).total_seconds()
                 
-                if 0 <= time_difference_seconds <= 180: 
+                # Changed it to 5 minutes.
+                if 0 <= time_difference_seconds <= 300: 
                     print(f"Markdown Task '{original_task_desc[:50]}...' scheduled for {scheduled_date_time_obj.strftime('%Y-%m-%d %H:%M')} is due soon.")
                     if should_send_notification(notification_tracker_file, task_id):
                         ntfy_title_header = 'Task Reminder'
                         notif_body_desc = truncate_task_description(original_task_desc, 100)
                         details_for_body = f"{notif_body_desc} is due at {scheduled_date_time_obj.strftime('%H:%M')}!"
-                        ntfy_message_body = f"Task Reminder: {details_for_body}"
+                        ntfy_message_body = f"{details_for_body}"
                         send_ntfy_notification(ntfy_topic, ntfy_title_header, ntfy_message_body, priority="high", tags="alarm_clock,markdown")
                     else:
                         print(f"Notification for Markdown task ID {task_id} already sent or failed to mark.")
