@@ -1,17 +1,16 @@
 # Logseq Notify via ntfy.sh
 
-This Python script parses a Logseq-compatible Markdown file (e.g., `Tasks.md`) for tasks with `SCHEDULED:` timestamps. It sends push notifications via a self-hosted or public `ntfy.sh` server for tasks that are due to start within the next 5 minutes.
+This Python script looks through a Logseq Markdown file named `Tasks.md` for tasks with `SCHEDULED:` timestamps. It sends push notifications via a self-hosted or public `ntfy.sh` server for tasks that are due to start within the next 5 minutes.
 
 The script is designed to be run periodically (e.g., every 5 minutes) by a scheduler like `cron` (on Linux/macOS/PC) or Tasker (on Android via Termux).
 
 ## Features
 
-* **Markdown Task Parsing:** Reads tasks from a specified Markdown file.
+* **Markdown Task Parsing:** Reads tasks from a Logseq-specific Markdown file.
 * **Scheduled Time Detection:** Recognizes `SCHEDULED: <YYYY-MM-DD HH:MM>` entries associated with tasks.
 * **Timely Notifications:** Sends alerts for tasks scheduled to occur between the current time and 5 minutes into the future.
 * **ntfy.sh Integration:** Leverages `ntfy.sh` for customizable push notifications.
 * **Duplicate Prevention:** Keeps track of sent notifications to avoid redundant alerts for the same task instance.
-* **Automatic Configuration:** Creates a default JSON configuration file on first run if one doesn't exist, prompting the user for essential paths.
 * **Cross-Platform Compatibility:**
     * Works on standard PC environments (Linux, macOS, Windows with Python).
     * Supports Android via Termux, including wakelock handling to ensure script execution.
@@ -20,7 +19,7 @@ The script is designed to be run periodically (e.g., every 5 minutes) by a sched
 ## How it Works
 
 1.  **Load Configuration:** The script first tries to load `config_markdown.json`.
-    * On a PC, it looks in `~/.config/logseq_notifier_md/config_markdown.json`.
+    * On a PC, it looks in `~/logseq/graphs/Omni/assets/config_markdown.json`.
     * If not found (or on Termux), it looks for `config_markdown.json` in the same directory as the script.
     * If no configuration is found, it creates a default one and may prompt for initial setup of paths (Markdown file, output directory, ntfy topic).
 2.  **Parse Markdown File:** It reads the specified Markdown file line by line.
@@ -85,10 +84,11 @@ The script is designed to be run periodically (e.g., every 5 minutes) by a sched
 
 ## Usage
 
-### 1. Formatting Tasks in Markdown (Logseq)
-
-The script looks for tasks formatted like this:
+### The script looks for tasks formatted like this:
 
 ```markdown
 - TODO Task description
   SCHEDULED: <YYYY-MM-DD HH:MM>
+```
+
+The second line must be shift+entered.
