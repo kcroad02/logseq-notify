@@ -1,3 +1,5 @@
+#!/data/data/com.termux/files/usr/bin/python
+
 import os
 import re
 import json
@@ -412,4 +414,3 @@ def main():
 if __name__ == '__main__':
     exit_code = main()
     exit(exit_code)
-
